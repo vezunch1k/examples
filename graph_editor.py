@@ -4,11 +4,8 @@ import re
 import argparse
 
 
-class Vertex(object):
-    def __init__(self, vertex_name):
-        if re.search('[^a-zA-Z_0-9]', vertex_name):
-            raise AttributeError('You can use only letters, digits and _')
-        self.vertex_name = vertex_name
+class Item(object):
+    def __init__():
         self.options = {}
 
     def set_option(self, key, value):
@@ -22,7 +19,15 @@ class Vertex(object):
         del self.options[key]
 
 
-class Edge(object):
+class Vertex(Item):
+    def __init__(self, vertex_name):
+        if re.search('[^a-zA-Z_0-9]', vertex_name):
+            raise AttributeError('You can use only letters, digits and _')
+        self.vertex_name = vertex_name
+        self.options = {}
+
+
+class Edge(Item):
     def __init__(self, name1, name2):
         if re.search('[^a-zA-Z_0-9]', name1):
             raise AttributeError('You can use only letters, digits and _')
@@ -31,16 +36,6 @@ class Edge(object):
         self.name1 = name1
         self.name2 = name2
         self.options = {}
-
-    def set_option(self, key, value):
-        if re.search('[^a-zA-Z_0-9]', key):
-            raise AttributeError('You can use only letters, digits and _')
-        self.options[key] = value
-
-    def remove_option(self, key):
-        if key not in self.options:
-            raise AttributeError('No option with key %s' % key)
-        del self.options[key]
 
 
 class Graph(object):
@@ -163,8 +158,7 @@ class Document(object):
                     options_buffer.extend([''.join([o, '=', m])])
                 options_buffer = ' '.join(options_buffer)
                 options_str = ''.join([' [', options_buffer, ']'])
-            (name1, name2) = k.split(':')
-            buffer.extend([name1, ' -- ', name2, options_str, ';\n'])
+            buffer.extend([v.name1, ' -- ', v.name2, options_str, ';\n'])
         buffer.append('}\n')
         sys.stdout.write(''.join(buffer))
 
