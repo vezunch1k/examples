@@ -18,6 +18,17 @@ class Item(object):
             raise AttributeError('No option with key %s' % key)
         del self.options[key]
 
+# generalized function for getting Item options to be printed
+    def get_printable_options(self):
+        options_str = ''
+        if self.options:
+            options_buffer = []
+            for k, v in self.options.iteritems():
+                options_buffer.extend([''.join([k, '=', v])])
+            options_buffer = ' '.join(options_buffer)
+            options_str = ''.join([' [', options_buffer, ']'])
+        return options_str
+
 
 class Vertex(Item):
     def __init__(self, vertex_name):
@@ -37,42 +48,57 @@ class Edge(Item):
         self.name2 = name2
         self.options = {}
 
+# hide logics for naming inside class
+    @staticmethod
+    def get_edge_name(name1, name2):
+        (name1, name2) = sorted([name1, name2])
+        return ''.join((name1, ':', name2))
+
 
 class Graph(object):
     def __init__(self):
         self.vertex_list = {}
         self.edge_list = {}
 
-    def has_edge(self, name1, name2):
-        if ''.join((name1, ':', name2)) in self.edge_list:
-            return True
-        return False
-
     def has_vertex(self, name):
         return True if name in self.vertex_list else False
 
-    def add_vertex(self, vertex):
-        self.vertex_list[vertex.vertex_name] = vertex
+    def add_vertex(self, name):
+        if self.has_vertex(name):
+            raise AttributeError('Graph has vertex with name %s' % name)
+        self.vertex_list[name] = Vertex(name)
 
     def remove_vertex(self, name):
         if not self.has_vertex(name):
             raise AttributeError('No vertex in graph with name %s' % name)
         del self.vertex_list[name]
 
+    def set_vertex_attribute(self, name, key, value):
+        vertex = self.get_vertex(name)
+        vertex.set_option(key, value)
+
+    def remove_vertex_attribute(self, name, key):
+        vertex = self.get_vertex(name)
+        vertex.remove_option(key)
+
+    def has_edge(self, name1, name2):
+        if Edge.get_edge_name(name1, name2) in self.edge_list:
+            return True
+        return False
+
     def add_edge(self, name1, name2):
         if not self.has_vertex(name1):
             raise AttributeError('No vertex with name %s' % name1)
-        elif not self.has_vertex(name2):
+        if not self.has_vertex(name2):
             raise AttributeError('No vertex with name %s' % name2)
-        else:
-            (name1, name2) = sorted([name1, name2])
-            self.edge_list[''.join((name1, ':', name2))] = Edge(name1, name2)
+        if self.has_edge(name1, name2):
+            raise AttributeError('Graph has edge %s -- %s' % (name1, name2))
+        self.edge_list[Edge.get_edge_name(name1, name2)] = Edge(name1, name2)
 
     def remove_edge(self, name1, name2):
-        (name1, name2) = sorted([name1, name2])
         if not self.has_edge(name1, name2):
             raise AttributeError('No edge between %s and %s' % (name1, name2))
-        del self.edge_list[''.join((name1, ':', name2))]
+        del self.edge_list[Edge.get_edge_name(name1, name2)]
 
     def get_vertex(self, name):
         if not self.has_vertex(name):
@@ -80,10 +106,17 @@ class Graph(object):
         return self.vertex_list[name]
 
     def get_edge(self, name1, name2):
-        (name1, name2) = sorted([name1, name2])
         if not self.has_edge(name1, name2):
             raise AttributeError('No edge between %s and %s' % (name1, name2))
-        return self.edge_list[''.join((name1, ':', name2))]
+        return self.edge_list[Edge.get_edge_name(name1, name2)]
+
+    def set_edge_attribute(self, name1, name2, key, value):
+        edge = self.get_edge(name1, name2)
+        edge.set_option(key, value)
+
+    def remove_edge_attribute(self, name1, name2, key):
+        edge = self.get_edge(name1, name2)
+        edge.remove_option(key)
 
 
 class Activity(object):
@@ -114,6 +147,7 @@ class History(object):
 
     def add(self, act):
         self.undo.append(act)
+# flush redo stack, if action called from command line
         del self.redo[:]
 
 
@@ -126,39 +160,25 @@ class Document(object):
         sys.exit(0)
 
     def add_vertex(self, obj):
-        mygraph.add_vertex(Vertex(obj.name))
+        mygraph.add_vertex(obj.name)
 
     def remove_vertex(self, obj):
         mygraph.remove_vertex(obj.name)
 
     def set_vertex_attribute(self, obj):
-        vertex = mygraph.get_vertex(obj.name)
-        vertex.set_option(obj.key, obj.value)
+        mygraph.set_vertex_attribute(obj.name, obj.key, obj.value)
 
     def remove_vertex_attribute(self, obj):
-        vertex = mygraph.get_vertex(obj.name)
-        vertex.remove_option(obj.key)
+        mygraph.remove_vertex_attribute(obj.name, obj.key)
 
     def print_graph(self, *args):
         buffer = ['graph mygraph {\n']
         for k, v in mygraph.vertex_list.iteritems():
-            options_str = ''
-            if v.options:
-                options_buffer = []
-                for o, m in v.options.iteritems():
-                    options_buffer.extend([''.join([o, '=', m])])
-                options_buffer = ' '.join(options_buffer)
-                options_str = ''.join([' [', options_buffer, ']'])
-            buffer.extend([k, options_str, ';\n'])
+            options = v.get_printable_options()
+            buffer.extend([k, options, ';\n'])
         for k, v in mygraph.edge_list.iteritems():
-            options_str = ''
-            if v.options:
-                options_buffer = []
-                for o, m in v.options.iteritems():
-                    options_buffer.extend([''.join([o, '=', m])])
-                options_buffer = ' '.join(options_buffer)
-                options_str = ''.join([' [', options_buffer, ']'])
-            buffer.extend([v.name1, ' -- ', v.name2, options_str, ';\n'])
+            options = v.get_printable_options()
+            buffer.extend([v.name1, ' -- ', v.name2, options, ';\n'])
         buffer.append('}\n')
         sys.stdout.write(''.join(buffer))
 
@@ -169,12 +189,10 @@ class Document(object):
         mygraph.remove_edge(obj.name1, obj.name2)
 
     def set_edge_attribute(self, obj):
-        edge = mygraph.get_edge(obj.name1, obj.name2)
-        edge.set_option(obj.key, obj.value)
+        mygraph.set_edge_attribute(obj.name1, obj.name2, obj.key, obj.value)
 
     def remove_edge_attribute(self, obj):
-        edge = mygraph.get_edge(obj.name1, obj.name2)
-        edge.remove_option(obj.key)
+        mygraph.remove_edge_attribute(obj.name1, obj.name2, obj.key)
 
     def undo(self, *args):
         myhistory.do_undo()
