@@ -56,7 +56,8 @@ class Edge(Item):
 
 
 class Graph(object):
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.vertex_list = {}
         self.edge_list = {}
 
@@ -118,6 +119,17 @@ class Graph(object):
         edge = self.get_edge(name1, name2)
         edge.remove_option(key)
 
+    def get_dot_graph(self):
+        buffer = ['graph ', self.name, ' {\n']
+        for k, v in self.vertex_list.iteritems():
+            options = v.get_printable_options()
+            buffer.extend([k, options, ';\n'])
+        for k, v in self.edge_list.iteritems():
+            options = v.get_printable_options()
+            buffer.extend([v.name1, ' -- ', v.name2, options, ';\n'])
+        buffer.append('}\n')
+        return ''.join(buffer)
+
 
 class Activity(object):
     def __init__(self, do, undo, params):
@@ -152,6 +164,10 @@ class History(object):
 
 
 class Document(object):
+    def __init__(self):
+        self.graph = Graph('mygraph')
+        self.history = History()
+
     def help(self, *args):
         print help
 
@@ -160,58 +176,51 @@ class Document(object):
         sys.exit(0)
 
     def add_vertex(self, obj):
-        mygraph.add_vertex(obj.name)
+        self.graph.add_vertex(obj.name)
 
     def remove_vertex(self, obj):
-        mygraph.remove_vertex(obj.name)
+        self.graph.remove_vertex(obj.name)
 
     def set_vertex_attribute(self, obj):
-        mygraph.set_vertex_attribute(obj.name, obj.key, obj.value)
+        self.graph.set_vertex_attribute(obj.name, obj.key, obj.value)
 
     def remove_vertex_attribute(self, obj):
-        mygraph.remove_vertex_attribute(obj.name, obj.key)
+        self.graph.remove_vertex_attribute(obj.name, obj.key)
 
     def print_graph(self, *args):
-        buffer = ['graph mygraph {\n']
-        for k, v in mygraph.vertex_list.iteritems():
-            options = v.get_printable_options()
-            buffer.extend([k, options, ';\n'])
-        for k, v in mygraph.edge_list.iteritems():
-            options = v.get_printable_options()
-            buffer.extend([v.name1, ' -- ', v.name2, options, ';\n'])
-        buffer.append('}\n')
-        sys.stdout.write(''.join(buffer))
+        printable_graph = self.graph.get_dot_graph()
+        sys.stdout.write(printable_graph)
 
     def add_edge(self, obj):
-        mygraph.add_edge(obj.name1, obj.name2)
+        self.graph.add_edge(obj.name1, obj.name2)
 
     def remove_edge(self, obj):
-        mygraph.remove_edge(obj.name1, obj.name2)
+        self.graph.remove_edge(obj.name1, obj.name2)
 
     def set_edge_attribute(self, obj):
-        mygraph.set_edge_attribute(obj.name1, obj.name2, obj.key, obj.value)
+        self.graph.set_edge_attribute(obj.name1, obj.name2, obj.key, obj.value)
 
     def remove_edge_attribute(self, obj):
-        mygraph.remove_edge_attribute(obj.name1, obj.name2, obj.key)
+        self.graph.remove_edge_attribute(obj.name1, obj.name2, obj.key)
 
     def undo(self, *args):
-        myhistory.do_undo()
+        self.history.do_undo()
 
     def redo(self, *args):
-        myhistory.do_redo()
+        self.history.do_redo()
 
 
-def get_parser():
+def get_parser(doc):
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title="Commands", metavar="<command>")
 
     p_va = subparsers.add_parser('add_vertex', help='vertex adding')
     p_va.add_argument('name')
-    p_va.set_defaults(func=mydoc.add_vertex, antifunc=mydoc.remove_vertex)
+    p_va.set_defaults(func=doc.add_vertex, antifunc=doc.remove_vertex)
 
     p_rv = subparsers.add_parser('remove_vertex', help='vertex deleting')
     p_rv.add_argument('name')
-    p_rv.set_defaults(func=mydoc.remove_vertex, antifunc=mydoc.add_vertex)
+    p_rv.set_defaults(func=doc.remove_vertex, antifunc=doc.add_vertex)
 
     p_sva = subparsers.add_parser(
         'set_vertex_attribute', help='setting vertex attribute')
@@ -219,19 +228,19 @@ def get_parser():
     p_sva.add_argument('key')
     p_sva.add_argument('value')
     p_sva.set_defaults(
-        func=mydoc.set_vertex_attribute,
-        antifunc=mydoc.remove_vertex_attribute
+        func=doc.set_vertex_attribute,
+        antifunc=doc.remove_vertex_attribute
     )
 
     p_ae = subparsers.add_parser('add_edge', help='edge adding')
     p_ae.add_argument('name1')
     p_ae.add_argument('name2')
-    p_ae.set_defaults(func=mydoc.add_edge, antifunc=mydoc.remove_edge)
+    p_ae.set_defaults(func=doc.add_edge, antifunc=doc.remove_edge)
 
     p_re = subparsers.add_parser('remove_edge', help='edge deleting')
     p_re.add_argument('name1')
     p_re.add_argument('name2')
-    p_re.set_defaults(func=mydoc.remove_edge, antifunc=mydoc.add_edge)
+    p_re.set_defaults(func=doc.remove_edge, antifunc=doc.add_edge)
 
     p_sea = subparsers.add_parser(
         'set_edge_attribute', help='setting edge attribute')
@@ -240,33 +249,31 @@ def get_parser():
     p_sea.add_argument('key')
     p_sea.add_argument('value')
     p_sea.set_defaults(
-        func=mydoc.set_edge_attribute,
-        antifunc=mydoc.remove_edge_attribute
+        func=doc.set_edge_attribute,
+        antifunc=doc.remove_edge_attribute
     )
 
     p_undo = subparsers.add_parser('undo', help='undo the last action')
-    p_undo.set_defaults(func=mydoc.undo, antifunc=None)
+    p_undo.set_defaults(func=doc.undo, antifunc=None)
 
     p_redo = subparsers.add_parser('redo', help='redo the last action')
-    p_redo.set_defaults(func=mydoc.redo, antifunc=None)
+    p_redo.set_defaults(func=doc.redo, antifunc=None)
 
     p_pg = subparsers.add_parser('print', help='graph printing')
-    p_pg.set_defaults(func=mydoc.print_graph, antifunc=None)
+    p_pg.set_defaults(func=doc.print_graph, antifunc=None)
 
     p_exit = subparsers.add_parser('exit', help='exits the editor')
-    p_exit.set_defaults(func=mydoc.exit, antifunc=None)
+    p_exit.set_defaults(func=doc.exit, antifunc=None)
     return parser
 
 if __name__ == '__main__':
-    mygraph = Graph()
-    myhistory = History()
     mydoc = Document()
-    parser = get_parser()
+    parser = get_parser(mydoc)
     while True:
         try:
             args = parser.parse_args(raw_input('\n>>> Enter action: ').split())
             args.func(args)
             if args.antifunc:
-                myhistory.add(Activity(args.func, args.antifunc, args))
+                mydoc.history.add(Activity(args.func, args.antifunc, args))
         except Exception, e:
             print e
