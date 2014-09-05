@@ -168,9 +168,6 @@ class Document(object):
         self.graph = Graph('mygraph')
         self.history = History()
 
-    def help(self, *args):
-        print help
-
     def exit(self, *args):
         print 'Nooooooooo\n'
         sys.exit(0)
