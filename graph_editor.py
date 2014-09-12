@@ -54,6 +54,9 @@ class Edge(Item):
         (name1, name2) = sorted([name1, name2])
         return ''.join((name1, ':', name2))
 
+    def has_vertex(self, name):
+        return True if name in [self.name1, self.name2] else False
+
 
 class Graph(object):
     def __init__(self, name):
@@ -73,6 +76,9 @@ class Graph(object):
         if not self.has_vertex(name):
             raise AttributeError('No vertex in graph with name %s' % name)
         del self.vertex_list[name]
+        for key in self.edge_list.keys():
+            if self.edge_list[key].has_vertex(name):
+                del self.edge_list[key]
 
     def set_vertex_attribute(self, name, key, value):
         vertex = self.get_vertex(name)
