@@ -144,7 +144,7 @@ class Command(object):
         raise NotImplemented()
 
 
-class UndoableCommand(object):
+class UndoableCommand(Command):
     def unexecute():
         raise NotImplemented()
 
